@@ -23,7 +23,7 @@ typedef struct {
     unsigned char** blueData;
 }image;
 
-const double smoothingFilter[3][3] ={{1.0 / 9, 1.0 / 9, 1.0 / 9},
+const double smoothingFilter[3][3] = {{1.0 / 9, 1.0 / 9, 1.0 / 9},
                                     {1.0 / 9, 1.0 / 9, 1.0 / 9},
                                     {1.0 / 9, 1.0 / 9, 1.0 / 9}};
 
@@ -221,31 +221,63 @@ void writeData(const char * fileName, image *img) {
     fclose(filePointer);
 }
 
-void applyFiltersBW(image *img, char * filterNames[]) {
-
-}
-
-void applyFiltersColor(image *img, char * filterNames[]) {
-
-}
-
-
 int main(int argc, char * argv[]) {
     // read input data in image file
     image image;
     readInput(argv[1], &image);
 
-    int rank, size;
-    MPI_Init (&argc, &argv);
-    MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-    MPI_Comm_size (MPI_COMM_WORLD, &size);
+    if (image.type == BW) {  // image is bw
+        int rank, size;
+        MPI_Init (&argc, &argv);
+        MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+        MPI_Comm_size (MPI_COMM_WORLD, &size);
 
-    // for each filter
-    for (int i = FILTER_START; i < FILTER_END; i++) {
+        // for each filter
+        for (int i = FILTER_START; i < FILTER_END; i++) {
+            if (strcmp(argv[i],"smooth") == 0) {
 
+            } else
+            if (strcmp(argv[i],"blur") == 0) {
+
+            } else
+            if (strcmp(argv[i],"sharpen") == 0) {
+
+            } else
+            if (strcmp(argv[i],"mean") == 0) {
+
+            } else
+            if (strcmp(argv[i],"emboss") == 0) {
+
+            }
+        }
+        MPI_Finalize();
+    } else {  // image is in color
+        int rank, size;
+        MPI_Init (&argc, &argv);
+        MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+        MPI_Comm_size (MPI_COMM_WORLD, &size);
+
+        // for each filter
+        for (int i = FILTER_START; i < FILTER_END; i++) {
+            if (strcmp(argv[i],"smooth") == 0) {
+
+            } else
+            if (strcmp(argv[i],"blur") == 0) {
+
+            } else
+            if (strcmp(argv[i],"sharpen") == 0) {
+
+            } else
+            if (strcmp(argv[i],"mean") == 0) {
+
+            } else
+            if (strcmp(argv[i],"emboss") == 0) {
+
+            }
+        }
+        MPI_Finalize();
     }
 
-    MPI_Finalize();
     // write the output data (and free image allocated space)
     writeData(argv[2], &image);
 
