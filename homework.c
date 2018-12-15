@@ -217,9 +217,14 @@ void writeData(const char * fileName, image *img) {
     fclose(filePointer);
 }
 
-void applyFilters(image *img, char * filterNames[]) {
+void applyFiltersBW(image *img, char * filterNames[]) {
 
 }
+
+void applyFiltersColor(image *img, char * filterNames[]) {
+
+}
+
 
 int main(int argc, char * argv[]) {
     // read input data in image file
@@ -234,7 +239,11 @@ int main(int argc, char * argv[]) {
         strcpy(filters[i-3], argv[i]);
     }
     // apply all given filters
-    applyFilters(&image, filters);
+    if (image.type == BW) {  // to the black and white image
+        applyFiltersBW(&image, filters);
+    } else {  // to the color image
+        applyFiltersColor(&image, filters);
+    }
 
     // write the output data (and free image allocated space)
     writeData(argv[2], &image);
