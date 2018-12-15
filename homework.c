@@ -229,7 +229,6 @@ void applyFiltersColor(image *img, char * filterNames[]) {
 int main(int argc, char * argv[]) {
     // read input data in image file
     image image;
-
     readInput(argv[1], &image);
 
     // create an array just for the filters (just so it's prettier)
@@ -238,6 +237,7 @@ int main(int argc, char * argv[]) {
         filters[i - 3] = (char *)malloc(strlen(argv[i]) + 1);
         strcpy(filters[i-3], argv[i]);
     }
+
     // apply all given filters
     if (image.type == BW) {  // to the black and white image
         applyFiltersBW(&image, filters);
