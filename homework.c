@@ -19,6 +19,22 @@ typedef struct {
     unsigned char** blueData;
 }image;
 
+const double smoothingFilter[3][3] ={{1.0 / 9, 1.0 / 9, 1.0 / 9},
+                                    {1.0 / 9, 1.0 / 9, 1.0 / 9},
+                                    {1.0 / 9, 1.0 / 9, 1.0 / 9}};
+
+const double gaussBlurFilter[3][3] = {{1.0 / 16, 2.0 / 16, 1.0 / 16},
+                                    {2.0 / 16, 4.0 / 16, 2.0 / 16},
+                                    {1.0 / 16, 2.0 / 16, 1.0 / 16}};
+
+const double sharpenFilter[3][3] = {{0, -2.0 / 3, 0},
+                                    {- 2.0 / 3, 11.0 / 3, -2.0 / 3},
+                                    {0, -2.0 / 3, 0}};
+
+const double meanRemovalFilter[3][3] = {{0, 0, 0}, {0, 1, 0}, {0, 0, 0}};
+
+const double embossFilter[3][3] = {{0, 1, 0}, {0, 0, 0}, {0, -1, 0}};
+
 void readInput(const char * fileName, image *img) {
     // open input file for reading
     FILE *filePointer = fopen(fileName, "rb");
