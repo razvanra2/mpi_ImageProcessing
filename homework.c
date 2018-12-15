@@ -1,13 +1,17 @@
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #define IMAGE_SIZE_BW 1
 #define IMAGE_SIZE_COL 3
-
 #define BW 5
 #define COLOR 6
-
 #define UNDEFINED -1
+
+#define FILTER_START 3
+#define FILTER_END argc
+
 typedef struct {
     int type;  // store all data for any type of image
     int width;
@@ -231,25 +235,19 @@ int main(int argc, char * argv[]) {
     image image;
     readInput(argv[1], &image);
 
-    // create an array just for the filters (just so it's prettier)
-    char* filters[argc - 3];
-    for (int i = 3; i < argc; i++) {
-        filters[i - 3] = (char *)malloc(strlen(argv[i]) + 1);
-        strcpy(filters[i-3], argv[i]);
+    int rank, size;
+    MPI_Init (&argc, &argv);
+    MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+    MPI_Comm_size (MPI_COMM_WORLD, &size);
+
+    // for each filter
+    for (int i = FILTER_START; i < FILTER_END; i++) {
+
     }
 
-    // apply all given filters
-    if (image.type == BW) {  // to the black and white image
-        applyFiltersBW(&image, filters);
-    } else {  // to the color image
-        applyFiltersColor(&image, filters);
-    }
-
+    MPI_Finalize();
     // write the output data (and free image allocated space)
     writeData(argv[2], &image);
 
-    // free allocated space for filters
-    for (int i = 0; i < argc - 3; i++) {
-        free(filters[i]);
-    }
+    return 0;
 }
