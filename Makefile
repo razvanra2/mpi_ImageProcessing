@@ -7,3 +7,4 @@ distrib: homework
 	mpirun -np 4 homework imagini.in
 clean:
 	rm -f homework
+	rm -f homework.o
