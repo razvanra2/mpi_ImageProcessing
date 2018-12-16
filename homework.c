@@ -227,6 +227,7 @@ int main(int argc, char * argv[]) {
     // read input data in image file
     image givenImage;
     readInput(argv[1], &givenImage);
+
     if (givenImage.type == BW) {  // image is bw
         // init a temp image to work with
         image temp;
@@ -300,6 +301,7 @@ int main(int argc, char * argv[]) {
                                                filter[(line + 1) % 3][(column + 1) % 3] * temp.bwData[line + 1][column + 1];
                 }
             }
+            MPI_Barrier(MPI_COMM_WORLD);
         }
         // join the threads
         MPI_Finalize();
@@ -335,6 +337,7 @@ int main(int argc, char * argv[]) {
         }
         MPI_Finalize();
     }
+
     // write the output data (and free image allocated space)
     writeData(argv[2], &givenImage);
 
