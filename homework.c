@@ -282,15 +282,15 @@ int main(int argc, char * argv[]) {
 
                 // do not touch border pixels
                 if (line > 1 && column > 1 && line < givenImage.height - 1 && column < givenImage.width - 1) {
-                    givenImage.bwData[line][column] = filter[(line) % 3][(column - 1) % 3] * givenImage.bwData[line][column - 1] +
-                                               filter[(line) % 3][(column) % 3] * givenImage.bwData[line][column] +
-                                               filter[(line) % 3][(column + 1) % 3] * givenImage.bwData[line][column + 1] +
-                                               filter[(line - 1) % 3][(column - 1) % 3] * givenImage.bwData[line - 1][column - 1] +
-                                               filter[(line - 1) % 3][(column) % 3] * givenImage.bwData[line - 1][column] +
-                                               filter[(line - 1) % 3][(column + 1) % 3] * givenImage.bwData[line - 1][column + 1] +
-                                               filter[(line + 1) % 3][(column - 1) % 3] * givenImage.bwData[line + 1][column - 1] +
-                                               filter[(line + 1) % 3][(column) % 3] * givenImage.bwData[line + 1][column] +
-                                               filter[(line + 1) % 3][(column + 1) % 3] * givenImage.bwData[line + 1][column + 1];
+                    givenImage.bwData[line][column] = filter[(line) % 3][(column - 1) % 3] * temp.bwData[line][column - 1] +
+                                               filter[(line) % 3][(column) % 3] * temp.bwData[line][column] +
+                                               filter[(line) % 3][(column + 1) % 3] * temp.bwData[line][column + 1] +
+                                               filter[(line - 1) % 3][(column - 1) % 3] * temp.bwData[line - 1][column - 1] +
+                                               filter[(line - 1) % 3][(column) % 3] * temp.bwData[line - 1][column] +
+                                               filter[(line - 1) % 3][(column + 1) % 3] * temp.bwData[line - 1][column + 1] +
+                                               filter[(line + 1) % 3][(column - 1) % 3] * temp.bwData[line + 1][column - 1] +
+                                               filter[(line + 1) % 3][(column) % 3] * temp.bwData[line + 1][column] +
+                                               filter[(line + 1) % 3][(column + 1) % 3] * temp.bwData[line + 1][column + 1];
                 }
             }
             // join the threads
