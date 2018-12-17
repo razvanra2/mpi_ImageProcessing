@@ -26,20 +26,20 @@ typedef struct {
     unsigned char** blueData;
 }image;
 
-const double smoothingFilter[3][3] = {{1.0 / 9, 1.0 / 9, 1.0 / 9},
-                                    {1.0 / 9, 1.0 / 9, 1.0 / 9},
-                                    {1.0 / 9, 1.0 / 9, 1.0 / 9}};
+const double smoothingFilter[9] = {1.0 / 9, 1.0 / 9, 1.0 / 9,
+                                    1.0 / 9, 1.0 / 9, 1.0 / 9,
+                                    1.0 / 9, 1.0 / 9, 1.0 / 9};
 
-const double gaussBlurFilter[3][3] = {{1.0 / 16, 2.0 / 16, 1.0 / 16},
-                                    {2.0 / 16, 4.0 / 16, 2.0 / 16},
-                                    {1.0 / 16, 2.0 / 16, 1.0 / 16}};
+const double gaussBlurFilter[9] = {1.0 / 16, 2.0 / 16, 1.0 / 16,
+                                    2.0 / 16, 4.0 / 16, 2.0 / 16,
+                                    1.0 / 16, 2.0 / 16, 1.0 / 16};
 
-const double sharpenFilter[3][3] = {{0, -2.0 / 3, 0},
-                                    {- 2.0 / 3, 11.0 / 3, -2.0 / 3},
-                                    {0, -2.0 / 3, 0}};
+const double sharpenFilter[9] = {0, -2.0 / 3, 0,
+                                    -2.0 / 3, 11.0 / 3, -2.0 / 3,
+                                    0, -2.0 / 3, 0};
 
-const double meanRemovalFilter[3][3] = {{0, 0, 0}, {0, 1, 0}, {0, 0, 0}};
-const double embossFilter[3][3] = {{0, 1, 0}, {0, 0, 0}, {0, -1, 0}};
+const double meanRemovalFilter[9] = {0, 0, 0, 0, 1, 0, 0, 0, 0};
+const double embossFilter[9] = {0, 1, 0, 0, 0, 0, 0, -1, 0};
 
 void readInput(const char * fileName, image *img) {
     // open input file for reading
@@ -239,7 +239,7 @@ int main(int argc, char * argv[]) {
 
         // start the threads
         int rank, size;
-        double filter[3][3];
+        double filter[9];
 
         MPI_Init(&argc, &argv);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -281,7 +281,11 @@ int main(int argc, char * argv[]) {
                     memcpy(filter, embossFilter, 9 * sizeof(double));
                 }
             }
+
             MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Bcast(filter, 9, MPI_DOUBLE, LEADER_RANK, MPI_COMM_WORLD);
+            MPI_Bcast(temp.bwData, givenImage.width * givenImage.height,
+                MPI_CHAR, LEADER_RANK, MPI_COMM_WORLD);
 
             // eaech thread edits the pixels assigned to it
             for (int j = lowBound; j < highBound; j++) {
@@ -290,18 +294,55 @@ int main(int argc, char * argv[]) {
 
                 // do not touch border pixels
                 if (line > 1 && column > 1 && line < givenImage.height - 1 && column < givenImage.width - 1) {
-                    givenImage.bwData[line][column] = filter[(line) % 3][(column - 1) % 3] * temp.bwData[line][column - 1] +
-                                               filter[(line) % 3][(column) % 3] * temp.bwData[line][column] +
-                                               filter[(line) % 3][(column + 1) % 3] * temp.bwData[line][column + 1] +
-                                               filter[(line - 1) % 3][(column - 1) % 3] * temp.bwData[line - 1][column - 1] +
-                                               filter[(line - 1) % 3][(column) % 3] * temp.bwData[line - 1][column] +
-                                               filter[(line - 1) % 3][(column + 1) % 3] * temp.bwData[line - 1][column + 1] +
-                                               filter[(line + 1) % 3][(column - 1) % 3] * temp.bwData[line + 1][column - 1] +
-                                               filter[(line + 1) % 3][(column) % 3] * temp.bwData[line + 1][column] +
-                                               filter[(line + 1) % 3][(column + 1) % 3] * temp.bwData[line + 1][column + 1];
+                    givenImage.bwData[line][column] =
+                       filter[0] * temp.bwData[line - 1][column - 1] +
+                       filter[1] * temp.bwData[line - 1][column] +
+                       filter[2] * temp.bwData[line - 1][column + 1] +
+                       filter[3] * temp.bwData[line][column - 1] +
+                       filter[4] * temp.bwData[line][column] +
+                       filter[5] * temp.bwData[line][column + 1] +
+                       filter[6] * temp.bwData[line + 1][column - 1] +
+                       filter[7] * temp.bwData[line + 1][column] +
+                       filter[8] * temp.bwData[line + 1][column + 1];
                 }
             }
-            MPI_Barrier(MPI_COMM_WORLD);
+
+            MPI_Barrier(MPI_COMM_WORLD);  // when all threads finished editing
+            if (rank != LEADER_RANK) {  // all but leader send their data
+                MPI_Send(&temp.bwData, givenImage.width * givenImage.height,
+                    MPI_UNSIGNED_CHAR, LEADER_RANK, 0, MPI_COMM_WORLD);
+            } else {  // the leader merges the imagery
+                image recvImage;
+                recvImage.bwData = (unsigned char **)malloc(givenImage.height * sizeof(unsigned char *));
+                for (int j = 0; j < givenImage.height; j++)
+                {
+                    recvImage.bwData[j] = (unsigned char *)malloc(givenImage.width * sizeof(unsigned char));
+                }
+
+                for (int j = 0; j < size; j++) {
+                    if (j != LEADER_RANK) {
+                        MPI_Recv(&recvImage.bwData, givenImage.width * givenImage.height,
+                            MPI_UNSIGNED_CHAR, j, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+                        int jlowBound = mulFactor * j;
+                        int jhighBound = (int)fmin(mulFactor * (j + 1), givenImage.width * givenImage.height);
+
+                        for (int k = jlowBound; k < jhighBound; k++) {
+                            int lineJ = k / givenImage.width;
+                            int columnJ = k % givenImage.width;
+
+                            givenImage.bwData[lineJ][columnJ] = recvImage.bwData[lineJ][columnJ];
+                        }
+                    }
+                }
+
+                for (int i = 0; i < givenImage.height; i++) {
+                    free(recvImage.bwData[i]);
+                }
+                free(recvImage.bwData);
+            }
+
+            MPI_Barrier(MPI_COMM_WORLD);  // done merging
         }
         // join the threads
         MPI_Finalize();
