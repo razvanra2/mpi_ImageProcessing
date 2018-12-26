@@ -210,15 +210,23 @@ void writeData(const char * fileName, image *img) {
             }
         }
     }
-    // safety check
-    // do not free unallocated memory
-    if (img->type == BW || img->type == COLOR) {
-        if (img->type == BW) {
-            for (int i = 0; i < img->height; i++) {
-                free(img->bwData[i]);
-            }
-            free(img->bwData);
+
+    // free allocated memory
+    if (img->type == BW) {
+        for (int i = 0; i < img->height; i++) {
+            free(img->bwData[i]);
         }
+        free(img->bwData);
+    } else {
+        for (int i = 0; i < img->height; i++) {
+            free(img->redData[i]);
+            free(img->greenData[i]);
+            free(img->blueData[i]);
+
+        }
+        free(img->redData);
+        free(img->greenData);
+        free(img->blueData);
     }
     fclose(filePointer);
 }
@@ -301,7 +309,7 @@ int main(int argc, char * argv[]) {
             {
                 memcpy(filter, embossFilter, 9 * sizeof(double));
             }
-
+            MPI_Barrier(MPI_COMM_WORLD);
             // apply the filter
             for (int i = lowBound; i < highBound; i++) {
                 int line = i / givenImage.width;
@@ -322,7 +330,7 @@ int main(int argc, char * argv[]) {
                        filter[8] * temp.bwData[line + 1][column + 1];
                 }
             }
-
+            MPI_Barrier(MPI_COMM_WORLD);
             // make givenImage with applied filter from all threads
             if (rank != LEADER_RANK) {
                 for (int i = 0; i < givenImage.height; i++) {
@@ -354,11 +362,14 @@ int main(int argc, char * argv[]) {
                 }
             }
 
+            MPI_Barrier(MPI_COMM_WORLD);
+
             // send updated givenImage to all processes
             for (int i = 0; i < givenImage.height; i++) {
                 MPI_Bcast(givenImage.bwData[i], givenImage.width,
                 MPI_UNSIGNED_CHAR, LEADER_RANK, MPI_COMM_WORLD);
             }
+            MPI_Barrier(MPI_COMM_WORLD);
         }
     } else {  // image is in color
         // for each filter
