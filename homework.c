@@ -407,7 +407,7 @@ int main(int argc, char * argv[]) {
             {
                 memcpy(filter, embossFilter, 9 * sizeof(float));
             }
-
+            MPI_Barrier(MPI_COMM_WORLD);
             // apply the filter
             for (int i = lowBound; i < highBound; i++) {
                 int line = i / givenImage.width;
@@ -450,7 +450,7 @@ int main(int argc, char * argv[]) {
                      filter[8] * temp.blueData[line + 1][column + 1];
                 }
             }
-
+            MPI_Barrier(MPI_COMM_WORLD);
             // make givenImage with applied filter from all threads
             if (rank != LEADER_RANK) {
                 for (int i = 0; i < givenImage.height; i++) {
@@ -481,7 +481,7 @@ int main(int argc, char * argv[]) {
                     }
                 }
             }
-
+            MPI_Barrier(MPI_COMM_WORLD);
             if (rank != LEADER_RANK) {
                 for (int i = 0; i < givenImage.height; i++) {
                     MPI_Send(givenImage.greenData[i], givenImage.width,
@@ -511,7 +511,7 @@ int main(int argc, char * argv[]) {
                     }
                 }
             }
-
+            MPI_Barrier(MPI_COMM_WORLD);
             if (rank != LEADER_RANK) {
                 for (int i = 0; i < givenImage.height; i++) {
                     MPI_Send(givenImage.blueData[i], givenImage.width,
@@ -541,7 +541,7 @@ int main(int argc, char * argv[]) {
                     }
                 }
             }
-
+            MPI_Barrier(MPI_COMM_WORLD);
             // send updated givenImage to all processes
             for (int i = 0; i < givenImage.height; i++) {
                 MPI_Bcast(givenImage.redData[i], givenImage.width,
@@ -553,6 +553,7 @@ int main(int argc, char * argv[]) {
                 MPI_Bcast(givenImage.blueData[i], givenImage.width,
                 MPI_UNSIGNED_CHAR, LEADER_RANK, MPI_COMM_WORLD);
             }
+            MPI_Barrier(MPI_COMM_WORLD);
         }
     }
 
