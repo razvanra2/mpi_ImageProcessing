@@ -228,72 +228,88 @@ int main(int argc, char * argv[]) {
     image givenImage;
     readInput(argv[1], &givenImage);
 
+    // init a temp image & filter to work with
+    image temp;
+    image recvImage;
+    double filter[9];
+
     if (givenImage.type == BW) {  // image is bw
-        // init a temp image to work with
-        image temp;
         temp.bwData = (unsigned char **)malloc(givenImage.height * sizeof(unsigned char *));
-        for (int i = 0; i < givenImage.height; i++)
-        {
+        recvImage.bwData = (unsigned char **)malloc(givenImage.height * sizeof(unsigned char *));
+        for (int i = 0; i < givenImage.height; i++) {
             temp.bwData[i] = (unsigned char *)malloc(givenImage.width * sizeof(unsigned char));
+            recvImage.bwData[i] = (unsigned char *)malloc(givenImage.width * sizeof(unsigned char));
         }
+    } else {  // image is in color
+        temp.redData = (unsigned char **)malloc(givenImage.height * sizeof(unsigned char *));
+        temp.greenData = (unsigned char **)malloc(givenImage.height * sizeof(unsigned char *));
+        temp.blueData = (unsigned char **)malloc(givenImage.height * sizeof(unsigned char *));
 
-        // start the threads
-        int rank, size;
-        double filter[9];
+        recvImage.redData = (unsigned char **)malloc(givenImage.height * sizeof(unsigned char *));
+        recvImage.greenData = (unsigned char **)malloc(givenImage.height * sizeof(unsigned char *));
+        recvImage.blueData = (unsigned char **)malloc(givenImage.height * sizeof(unsigned char *));
 
-        MPI_Init(&argc, &argv);
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &size);
+        for (int i = 0; i < givenImage.height; i++) {
+            temp.redData[i] = (unsigned char *)malloc(givenImage.width * sizeof(unsigned char));
+            temp.greenData[i] = (unsigned char *)malloc(givenImage.width * sizeof(unsigned char));
+            temp.blueData[i] = (unsigned char *)malloc(givenImage.width * sizeof(unsigned char));
 
-        // set the responsability of a thread
-        int mulFactor = (int)ceil((1.0 * givenImage.width * givenImage.height) / size);
-        int lowBound = mulFactor * rank;
-        int highBound = (int)fmin(mulFactor * (rank + 1), givenImage.width * givenImage.height);
+            recvImage.redData[i] = (unsigned char *)malloc(givenImage.width * sizeof(unsigned char));
+            recvImage.greenData[i] = (unsigned char *)malloc(givenImage.width * sizeof(unsigned char));
+            recvImage.blueData[i] = (unsigned char *)malloc(givenImage.width * sizeof(unsigned char));
+        }
+    }
 
+    // start the threads
+    int rank, size;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+    // set the responsability of a thread
+    int mulFactor = (int)ceil((1.0 * givenImage.width * givenImage.height) / size);
+    int lowBound = mulFactor * rank;
+    int highBound = (int)fmin(mulFactor * (rank + 1), givenImage.width * givenImage.height);
+
+    if (givenImage.type == BW) {  // image is bw
         // for each filter
-        for (int i = FILTER_START; i < FILTER_END; i++) {
-            // copy image data to temp image
-            if (rank == LEADER_RANK) {
-                for (int j = 0; j < givenImage.height; j++) {
-                    memcpy(temp.bwData[j], givenImage.bwData[j], givenImage.width * sizeof(unsigned char));
-                }
-
-                // set the filter;
-                if (strcmp(argv[i], "smooth") == 0)
-                {
-                    memcpy(filter, smoothingFilter, 9 * sizeof(double));
-                }
-                else if (strcmp(argv[i], "blur") == 0)
-                {
-                    memcpy(filter, gaussBlurFilter, 9 * sizeof(double));
-                }
-                else if (strcmp(argv[i], "sharpen") == 0)
-                {
-                    memcpy(filter, sharpenFilter, 9 * sizeof(double));
-                }
-                else if (strcmp(argv[i], "mean") == 0)
-                {
-                    memcpy(filter, meanRemovalFilter, 9 * sizeof(double));
-                }
-                else if (strcmp(argv[i], "emboss") == 0)
-                {
-                    memcpy(filter, embossFilter, 9 * sizeof(double));
-                }
+        for (int filterIndex = FILTER_START; filterIndex < FILTER_END; filterIndex++) {
+            // set the temp image
+            for (int i = 0; i < givenImage.height; i++) {
+                memcpy(temp.bwData[i], givenImage.bwData[i],
+                givenImage.width * sizeof(unsigned char));
             }
 
-            MPI_Barrier(MPI_COMM_WORLD);
-            MPI_Bcast(filter, 9, MPI_DOUBLE, LEADER_RANK, MPI_COMM_WORLD);
-            MPI_Bcast(temp.bwData, givenImage.width * givenImage.height,
-                MPI_CHAR, LEADER_RANK, MPI_COMM_WORLD);
+            // set the filter;
+            if (strcmp(argv[filterIndex], "smooth") == 0)
+            {
+                memcpy(filter, smoothingFilter, 9 * sizeof(double));
+            }
+            else if (strcmp(argv[filterIndex], "blur") == 0)
+            {
+                memcpy(filter, gaussBlurFilter, 9 * sizeof(double));
+            }
+            else if (strcmp(argv[filterIndex], "sharpen") == 0)
+            {
+                memcpy(filter, sharpenFilter, 9 * sizeof(double));
+            }
+            else if (strcmp(argv[filterIndex], "mean") == 0)
+            {
+                memcpy(filter, meanRemovalFilter, 9 * sizeof(double));
+            }
+            else if (strcmp(argv[filterIndex], "emboss") == 0)
+            {
+                memcpy(filter, embossFilter, 9 * sizeof(double));
+            }
 
-            // eaech thread edits the pixels assigned to it
-            for (int j = lowBound; j < highBound; j++) {
-                int line = j / givenImage.width;
-                int column = j % givenImage.width;
+            // apply the filter
+            for (int i = lowBound; i < highBound; i++) {
+                int line = i / givenImage.width;
+                int column = i % givenImage.width;
 
                 // do not touch border pixels
-                if (line > 1 && column > 1 && line < givenImage.height - 1 && column < givenImage.width - 1) {
+                if (line > 0 && column > 0 && line < givenImage.height - 1
+                && column < givenImage.width - 1) {
                     givenImage.bwData[line][column] =
                        filter[0] * temp.bwData[line - 1][column - 1] +
                        filter[1] * temp.bwData[line - 1][column] +
@@ -307,76 +323,75 @@ int main(int argc, char * argv[]) {
                 }
             }
 
-            MPI_Barrier(MPI_COMM_WORLD);  // when all threads finished editing
-            if (rank != LEADER_RANK) {  // all but leader send their data
-                MPI_Send(&temp.bwData, givenImage.width * givenImage.height,
+            // make givenImage with applied filter from all threads
+            if (rank != LEADER_RANK) {
+                for (int i = 0; i < givenImage.height; i++) {
+                    MPI_Send(givenImage.bwData[i], givenImage.width,
                     MPI_UNSIGNED_CHAR, LEADER_RANK, 0, MPI_COMM_WORLD);
-            } else {  // the leader merges the imagery
-                image recvImage;
-                recvImage.bwData = (unsigned char **)malloc(givenImage.height * sizeof(unsigned char *));
-                for (int j = 0; j < givenImage.height; j++)
-                {
-                    recvImage.bwData[j] = (unsigned char *)malloc(givenImage.width * sizeof(unsigned char));
                 }
+            } else {
+                for (int i = 0; i < size; i++) {
+                    if (i != LEADER_RANK) {
+                        for (int j = 0; j < givenImage.height; j++) {
+                            MPI_Recv(recvImage.bwData[j],
+                                givenImage.width,
+                                MPI_UNSIGNED_CHAR, i, 0, MPI_COMM_WORLD,
+                                MPI_STATUS_IGNORE);
+                        }
+                        int ilowBound = mulFactor * i;
+                        int ihighBound = (int)fmin(mulFactor * (i + 1), givenImage.width * givenImage.height);
 
-                for (int j = 0; j < size; j++) {
-                    if (j != LEADER_RANK) {
-                        MPI_Recv(&recvImage.bwData, givenImage.width * givenImage.height,
-                            MPI_UNSIGNED_CHAR, j, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        for (int j = ilowBound; j < ihighBound; j++) {
 
-                        int jlowBound = mulFactor * j;
-                        int jhighBound = (int)fmin(mulFactor * (j + 1), givenImage.width * givenImage.height);
-
-                        for (int k = jlowBound; k < jhighBound; k++) {
-                            int lineJ = k / givenImage.width;
-                            int columnJ = k % givenImage.width;
-
-                            givenImage.bwData[lineJ][columnJ] = recvImage.bwData[lineJ][columnJ];
+                            int lineI = j / givenImage.width;
+                            int columnI = j % givenImage.width;
+                            if (lineI > 0 && columnI > 0 && lineI < givenImage.height - 1
+                                && columnI < givenImage.width - 1) {
+                                givenImage.bwData[lineI][columnI] = recvImage.bwData[lineI][columnI];
+                            }
                         }
                     }
                 }
-
-                for (int i = 0; i < givenImage.height; i++) {
-                    free(recvImage.bwData[i]);
-                }
-                free(recvImage.bwData);
             }
 
-            MPI_Barrier(MPI_COMM_WORLD);  // done merging
+            // send updated givenImage to all processes
+            for (int i = 0; i < givenImage.height; i++) {
+                MPI_Bcast(givenImage.bwData[i], givenImage.width,
+                MPI_UNSIGNED_CHAR, LEADER_RANK, MPI_COMM_WORLD);
+            }
         }
-        // join the threads
-        MPI_Finalize();
+    } else {  // image is in color
+        // TODO
+    }
 
-        // clean-up temp image data
+    // join the threads
+    MPI_Finalize();
+
+    // clear up temp image data
+    if (givenImage.type == BW) {  // image is bw
         for (int i = 0; i < givenImage.height; i++) {
             free(temp.bwData[i]);
+            free(recvImage.bwData[i]);
         }
         free(temp.bwData);
-    } else {  // image is in color
-        int rank, size;
-        MPI_Init (&argc, &argv);
-        MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-        MPI_Comm_size (MPI_COMM_WORLD, &size);
+        free(recvImage.bwData);
+    } else {
+        for (int i = 0; i < givenImage.height; i++) {
+            free(temp.redData[i]);
+            free(temp.greenData[i]);
+            free(temp.blueData[i]);
 
-        // for each filter
-        for (int i = FILTER_START; i < FILTER_END; i++) {
-            if (strcmp(argv[i],"smooth") == 0) {
-
-            } else
-            if (strcmp(argv[i],"blur") == 0) {
-
-            } else
-            if (strcmp(argv[i],"sharpen") == 0) {
-
-            } else
-            if (strcmp(argv[i],"mean") == 0) {
-
-            } else
-            if (strcmp(argv[i],"emboss") == 0) {
-
-            }
+            free(recvImage.redData[i]);
+            free(recvImage.greenData[i]);
+            free(recvImage.blueData[i]);
         }
-        MPI_Finalize();
+        free(temp.redData);
+        free(temp.greenData);
+        free(temp.blueData);
+
+        free(recvImage.redData);
+        free(recvImage.greenData);
+        free(recvImage.blueData);
     }
 
     // write the output data (and free image allocated space)
