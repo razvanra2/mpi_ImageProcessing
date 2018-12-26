@@ -361,7 +361,188 @@ int main(int argc, char * argv[]) {
             }
         }
     } else {  // image is in color
-        // TODO
+        // for each filter
+        for (int filterIndex = FILTER_START; filterIndex < FILTER_END; filterIndex++) {
+            // set the temp image
+            for (int i = 0; i < givenImage.height; i++) {
+                memcpy(temp.redData[i], givenImage.redData[i],
+                givenImage.width * sizeof(unsigned char));
+
+                memcpy(temp.greenData[i], givenImage.greenData[i],
+                givenImage.width * sizeof(unsigned char));
+
+                memcpy(temp.blueData[i], givenImage.blueData[i],
+                givenImage.width * sizeof(unsigned char));
+            }
+
+            // set the filter;
+            if (strcmp(argv[filterIndex], "smooth") == 0)
+            {
+                memcpy(filter, smoothingFilter, 9 * sizeof(double));
+            }
+            else if (strcmp(argv[filterIndex], "blur") == 0)
+            {
+                memcpy(filter, gaussBlurFilter, 9 * sizeof(double));
+            }
+            else if (strcmp(argv[filterIndex], "sharpen") == 0)
+            {
+                memcpy(filter, sharpenFilter, 9 * sizeof(double));
+            }
+            else if (strcmp(argv[filterIndex], "mean") == 0)
+            {
+                memcpy(filter, meanRemovalFilter, 9 * sizeof(double));
+            }
+            else if (strcmp(argv[filterIndex], "emboss") == 0)
+            {
+                memcpy(filter, embossFilter, 9 * sizeof(double));
+            }
+
+            // apply the filter
+            for (int i = lowBound; i < highBound; i++) {
+                int line = i / givenImage.width;
+                int column = i % givenImage.width;
+
+                // do not touch border pixels
+                if (line > 0 && column > 0 && line < givenImage.height - 1
+                && column < givenImage.width - 1) {
+                    givenImage.redData[line][column] =
+                      filter[0] * temp.redData[line - 1][column - 1] +
+                      filter[1] * temp.redData[line - 1][column] +
+                      filter[2] * temp.redData[line - 1][column + 1] +
+                      filter[3] * temp.redData[line][column - 1] +
+                      filter[4] * temp.redData[line][column] +
+                      filter[5] * temp.redData[line][column + 1] +
+                      filter[6] * temp.redData[line + 1][column - 1] +
+                      filter[7] * temp.redData[line + 1][column] +
+                      filter[8] * temp.redData[line + 1][column + 1];
+
+                    givenImage.greenData[line][column] =
+                      filter[0] * temp.greenData[line - 1][column - 1] +
+                      filter[1] * temp.greenData[line - 1][column] +
+                      filter[2] * temp.greenData[line - 1][column + 1] +
+                      filter[3] * temp.greenData[line][column - 1] +
+                      filter[4] * temp.greenData[line][column] +
+                      filter[5] * temp.greenData[line][column + 1] +
+                      filter[6] * temp.greenData[line + 1][column - 1] +
+                      filter[7] * temp.greenData[line + 1][column] +
+                      filter[8] * temp.greenData[line + 1][column + 1];
+
+                    givenImage.blueData[line][column] =
+                     filter[0] * temp.blueData[line - 1][column - 1] +
+                     filter[1] * temp.blueData[line - 1][column] +
+                     filter[2] * temp.blueData[line - 1][column + 1] +
+                     filter[3] * temp.blueData[line][column - 1] +
+                     filter[4] * temp.blueData[line][column] +
+                     filter[5] * temp.blueData[line][column + 1] +
+                     filter[6] * temp.blueData[line + 1][column - 1] +
+                     filter[7] * temp.blueData[line + 1][column] +
+                     filter[8] * temp.blueData[line + 1][column + 1];
+                }
+            }
+
+            // make givenImage with applied filter from all threads
+            if (rank != LEADER_RANK) {
+                for (int i = 0; i < givenImage.height; i++) {
+                    MPI_Send(givenImage.redData[i], givenImage.width,
+                    MPI_UNSIGNED_CHAR, LEADER_RANK, 0, MPI_COMM_WORLD);
+                }
+            } else {
+                for (int i = 0; i < size; i++) {
+                    if (i != LEADER_RANK) {
+                        for (int j = 0; j < givenImage.height; j++) {
+                            MPI_Recv(recvImage.redData[j],
+                                givenImage.width,
+                                MPI_UNSIGNED_CHAR, i, 0, MPI_COMM_WORLD,
+                                MPI_STATUS_IGNORE);
+                        }
+                        int ilowBound = mulFactor * i;
+                        int ihighBound = (int)fmin(mulFactor * (i + 1), givenImage.width * givenImage.height);
+
+                        for (int j = ilowBound; j < ihighBound; j++) {
+
+                            int lineI = j / givenImage.width;
+                            int columnI = j % givenImage.width;
+                            if (lineI > 0 && columnI > 0 && lineI < givenImage.height - 1
+                                && columnI < givenImage.width - 1) {
+                                givenImage.redData[lineI][columnI] = recvImage.redData[lineI][columnI];
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (rank != LEADER_RANK) {
+                for (int i = 0; i < givenImage.height; i++) {
+                    MPI_Send(givenImage.greenData[i], givenImage.width,
+                    MPI_UNSIGNED_CHAR, LEADER_RANK, 0, MPI_COMM_WORLD);
+                }
+            } else {
+                for (int i = 0; i < size; i++) {
+                    if (i != LEADER_RANK) {
+                        for (int j = 0; j < givenImage.height; j++) {
+                            MPI_Recv(recvImage.greenData[j],
+                                givenImage.width,
+                                MPI_UNSIGNED_CHAR, i, 0, MPI_COMM_WORLD,
+                                MPI_STATUS_IGNORE);
+                        }
+                        int ilowBound = mulFactor * i;
+                        int ihighBound = (int)fmin(mulFactor * (i + 1), givenImage.width * givenImage.height);
+
+                        for (int j = ilowBound; j < ihighBound; j++) {
+
+                            int lineI = j / givenImage.width;
+                            int columnI = j % givenImage.width;
+                            if (lineI > 0 && columnI > 0 && lineI < givenImage.height - 1
+                                && columnI < givenImage.width - 1) {
+                                givenImage.greenData[lineI][columnI] = recvImage.greenData[lineI][columnI];
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (rank != LEADER_RANK) {
+                for (int i = 0; i < givenImage.height; i++) {
+                    MPI_Send(givenImage.blueData[i], givenImage.width,
+                    MPI_UNSIGNED_CHAR, LEADER_RANK, 0, MPI_COMM_WORLD);
+                }
+            } else {
+                for (int i = 0; i < size; i++) {
+                    if (i != LEADER_RANK) {
+                        for (int j = 0; j < givenImage.height; j++) {
+                            MPI_Recv(recvImage.blueData[j],
+                                givenImage.width,
+                                MPI_UNSIGNED_CHAR, i, 0, MPI_COMM_WORLD,
+                                MPI_STATUS_IGNORE);
+                        }
+                        int ilowBound = mulFactor * i;
+                        int ihighBound = (int)fmin(mulFactor * (i + 1), givenImage.width * givenImage.height);
+
+                        for (int j = ilowBound; j < ihighBound; j++) {
+
+                            int lineI = j / givenImage.width;
+                            int columnI = j % givenImage.width;
+                            if (lineI > 0 && columnI > 0 && lineI < givenImage.height - 1
+                                && columnI < givenImage.width - 1) {
+                                givenImage.blueData[lineI][columnI] = recvImage.blueData[lineI][columnI];
+                            }
+                        }
+                    }
+                }
+            }
+
+            // send updated givenImage to all processes
+            for (int i = 0; i < givenImage.height; i++) {
+                MPI_Bcast(givenImage.redData[i], givenImage.width,
+                MPI_UNSIGNED_CHAR, LEADER_RANK, MPI_COMM_WORLD);
+
+                MPI_Bcast(givenImage.greenData[i], givenImage.width,
+                MPI_UNSIGNED_CHAR, LEADER_RANK, MPI_COMM_WORLD);
+
+                MPI_Bcast(givenImage.blueData[i], givenImage.width,
+                MPI_UNSIGNED_CHAR, LEADER_RANK, MPI_COMM_WORLD);
+            }
+        }
     }
 
     // join the threads
