@@ -26,20 +26,20 @@ typedef struct {
     unsigned char** blueData;
 }image;
 
-const double smoothingFilter[9] = {1.0 / 9, 1.0 / 9, 1.0 / 9,
+const float smoothingFilter[9] = {1.0 / 9, 1.0 / 9, 1.0 / 9,
                                     1.0 / 9, 1.0 / 9, 1.0 / 9,
                                     1.0 / 9, 1.0 / 9, 1.0 / 9};
 
-const double gaussBlurFilter[9] = {1.0 / 16, 2.0 / 16, 1.0 / 16,
+const float gaussBlurFilter[9] = {1.0 / 16, 2.0 / 16, 1.0 / 16,
                                     2.0 / 16, 4.0 / 16, 2.0 / 16,
                                     1.0 / 16, 2.0 / 16, 1.0 / 16};
 
-const double sharpenFilter[9] = {0, -2.0 / 3, 0,
+const float sharpenFilter[9] = {0, -2.0 / 3, 0,
                                     -2.0 / 3, 11.0 / 3, -2.0 / 3,
                                     0, -2.0 / 3, 0};
 
-const double meanRemovalFilter[9] = {0, 0, 0, 0, 1, 0, 0, 0, 0};
-const double embossFilter[9] = {0, 1, 0, 0, 0, 0, 0, -1, 0};
+const float meanRemovalFilter[9] = {-1, -1, -1, -1, 9, -1, -1, -1, -1};
+const float embossFilter[9] = {0, 1, 0, 0, 0, 0, 0, -1, 0};
 
 void readInput(const char * fileName, image *img) {
     // open input file for reading
@@ -239,7 +239,7 @@ int main(int argc, char * argv[]) {
     // init a temp image & filter to work with
     image temp;
     image recvImage;
-    double filter[9];
+    float filter[9];
 
     if (givenImage.type == BW) {  // image is bw
         temp.bwData = (unsigned char **)malloc(givenImage.height * sizeof(unsigned char *));
@@ -291,23 +291,23 @@ int main(int argc, char * argv[]) {
             // set the filter;
             if (strcmp(argv[filterIndex], "smooth") == 0)
             {
-                memcpy(filter, smoothingFilter, 9 * sizeof(double));
+                memcpy(filter, smoothingFilter, 9 * sizeof(float));
             }
             else if (strcmp(argv[filterIndex], "blur") == 0)
             {
-                memcpy(filter, gaussBlurFilter, 9 * sizeof(double));
+                memcpy(filter, gaussBlurFilter, 9 * sizeof(float));
             }
             else if (strcmp(argv[filterIndex], "sharpen") == 0)
             {
-                memcpy(filter, sharpenFilter, 9 * sizeof(double));
+                memcpy(filter, sharpenFilter, 9 * sizeof(float));
             }
             else if (strcmp(argv[filterIndex], "mean") == 0)
             {
-                memcpy(filter, meanRemovalFilter, 9 * sizeof(double));
+                memcpy(filter, meanRemovalFilter, 9 * sizeof(float));
             }
             else if (strcmp(argv[filterIndex], "emboss") == 0)
             {
-                memcpy(filter, embossFilter, 9 * sizeof(double));
+                memcpy(filter, embossFilter, 9 * sizeof(float));
             }
             MPI_Barrier(MPI_COMM_WORLD);
             // apply the filter
@@ -389,23 +389,23 @@ int main(int argc, char * argv[]) {
             // set the filter;
             if (strcmp(argv[filterIndex], "smooth") == 0)
             {
-                memcpy(filter, smoothingFilter, 9 * sizeof(double));
+                memcpy(filter, smoothingFilter, 9 * sizeof(float));
             }
             else if (strcmp(argv[filterIndex], "blur") == 0)
             {
-                memcpy(filter, gaussBlurFilter, 9 * sizeof(double));
+                memcpy(filter, gaussBlurFilter, 9 * sizeof(float));
             }
             else if (strcmp(argv[filterIndex], "sharpen") == 0)
             {
-                memcpy(filter, sharpenFilter, 9 * sizeof(double));
+                memcpy(filter, sharpenFilter, 9 * sizeof(float));
             }
             else if (strcmp(argv[filterIndex], "mean") == 0)
             {
-                memcpy(filter, meanRemovalFilter, 9 * sizeof(double));
+                memcpy(filter, meanRemovalFilter, 9 * sizeof(float));
             }
             else if (strcmp(argv[filterIndex], "emboss") == 0)
             {
-                memcpy(filter, embossFilter, 9 * sizeof(double));
+                memcpy(filter, embossFilter, 9 * sizeof(float));
             }
 
             // apply the filter
